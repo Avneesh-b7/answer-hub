@@ -7,6 +7,7 @@
 import { IndexType, Permission, Role } from "node-appwrite";
 import { db, votesCollection } from "../name";
 import { ss_database } from "./config";
+import { waitForAttribute } from "./utils";
 
 export default async function createVotesCollection() {
   // Create the collection
@@ -59,6 +60,16 @@ export default async function createVotesCollection() {
   ]);
 
   console.log("Votes attributes created");
+
+  // Wait for all attributes to become available
+  console.log("Waiting for attributes to be ready...");
+  await Promise.all([
+    waitForAttribute(db, votesCollection, "voteType"),
+    waitForAttribute(db, votesCollection, "questionId"),
+    waitForAttribute(db, votesCollection, "answerId"),
+    waitForAttribute(db, votesCollection, "voterId"),
+  ]);
+  console.log("All attributes are ready");
 
   // Create indexes
   await Promise.all([

@@ -7,6 +7,7 @@
 import { IndexType, Permission, Role } from "node-appwrite";
 import { answersCollection, db } from "../name";
 import { ss_database } from "./config";
+import { waitForAttribute } from "./utils";
 
 export default async function createAnswersCollection() {
   // Create the collection
@@ -52,6 +53,15 @@ export default async function createAnswersCollection() {
   ]);
 
   console.log("Answers attributes created");
+
+  // Wait for all attributes to become available
+  console.log("Waiting for attributes to be ready...");
+  await Promise.all([
+    waitForAttribute(db, answersCollection, "questionId"),
+    waitForAttribute(db, answersCollection, "content"),
+    waitForAttribute(db, answersCollection, "authorId"),
+  ]);
+  console.log("All attributes are ready");
 
   // Create indexes
   await Promise.all([
