@@ -16,7 +16,7 @@ import createQuestionsCollection from "./questions.collections";
 import createAnswersCollection from "./answers.collections";
 import createCommentsCollection from "./comments.collections";
 import createVotesCollection from "./votes.collections";
-import createStorageBuckets from "./storage.collections";
+import createStorageBuckets from "./storage.bucket.setup";
 
 /**
  * Helper function to check if collection exists before creating it
