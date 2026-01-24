@@ -43,48 +43,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* Navigation Bar */}
-      <nav className="border-b bg-background">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-8">
-            <Link href="/" className="text-2xl font-bold">
-              Answer<span className="text-primary">Hub</span>
-            </Link>
-            <div className="hidden items-center gap-6 md:flex">
-              <Link
-                href="/questions"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Questions
-              </Link>
-              <Link
-                href="/tags"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Tags
-              </Link>
-              <Link
-                href="/users"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Users
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">Log in</Button>
-            </Link>
-            <Link href="/register">
-              <Button>Sign up</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
-      <section className="border-b bg-linear-to-br from-background to-muted py-20">
+      <section className="border-b bg-gradient-to-br from-background to-muted py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="mb-6 text-5xl font-bold tracking-tight">
             Every developer has a tab open to{" "}

@@ -1,4 +1,15 @@
-import env from "../../env.js";
+// Server-side Appwrite configuration - uses private API key
+// NEVER import this file in client components!
+
+// Load environment variables from project root .env.local when running setup scripts (npx tsx)
+// Next.js automatically loads .env files, but standalone scripts need this
+import { config } from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+config({ path: path.join(__dirname, "../../.env.local") });
 
 import {
   Client,
@@ -13,9 +24,9 @@ import {
 const ss_client = new Client();
 
 ss_client
-  .setEndpoint(env.appwrite.api_endpoint) // Your API Endpoint
-  .setProject(env.appwrite.project_id) // Your project ID
-  .setKey(env.appwrite.api_key); // Your secret API key
+  .setEndpoint(process.env.NEXT_PUBLIC_API_ENDPOINT!)
+  .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!)
+  .setKey(process.env.APPWRITE_API_KEY!); // Server-only secret
 
 export const ss_account = new Account(ss_client);
 export const ss_database = new Databases(ss_client);

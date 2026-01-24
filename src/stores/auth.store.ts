@@ -128,13 +128,11 @@ export const useAuthStore = create<IAuthStore>()(
         }
       },
 
-      // Register action - creates Auth user and user profile document
+      // Register action - creates Auth user, auto-login, and user profile document
       register: async (email, password, name) => {
         set((state) => {
           state.isLoading = true;
         });
-
-        let authUserId: string | null = null;
 
         try {
           // Step 1: Create Appwrite Auth user
@@ -144,16 +142,21 @@ export const useAuthStore = create<IAuthStore>()(
             password,
             name,
           );
-          authUserId = authUser.$id;
 
-          // Step 2: Create user profile document in database
+          // Step 2: Immediately create a session (auto-login)
+          const session = await account.createEmailPasswordSession(
+            email,
+            password,
+          );
+
+          // Step 3: Create user profile document in database (now authenticated)
           try {
             await database.createDocument(
               db,
               userCollection,
               ID.unique(),
               {
-                userId: authUserId, // Link to Auth user
+                userId: authUser.$id, // Link to Auth user
                 reputation: 0,
                 bio: "",
                 avatarId: null,
@@ -162,23 +165,30 @@ export const useAuthStore = create<IAuthStore>()(
               },
             );
 
+            // Step 4: Update store with user and session
             set((state) => {
+              state.user = authUser;
+              state.session = session;
               state.isLoading = false;
             });
 
             return {
               success: true,
-              message: "Registration successful. Please login to continue.",
+              message: "Welcome to Answer Hub! Registration successful.",
             };
           } catch (profileError: any) {
-            // Rollback: Delete Auth user if profile creation fails
+            // Rollback: Delete the session if profile creation fails
             console.error("Profile creation failed:", profileError);
 
-            // Delete the Auth user we just created
-            // Note: Can't delete via client SDK without session
-            // This is a limitation - consider using server-side cleanup
+            try {
+              await account.deleteSession("current");
+            } catch (logoutError) {
+              console.error("Failed to delete session during rollback:", logoutError);
+            }
 
             set((state) => {
+              state.user = null;
+              state.session = null;
               state.isLoading = false;
             });
 
@@ -193,9 +203,18 @@ export const useAuthStore = create<IAuthStore>()(
             state.isLoading = false;
           });
 
+          // Parse Appwrite error messages for better UX
+          let errorMessage = "Registration failed. Please try again.";
+
+          if (error?.code === 409 || error?.message?.includes("already exists")) {
+            errorMessage = "An account with this email already exists. Please login instead.";
+          } else if (error?.message) {
+            errorMessage = error.message;
+          }
+
           return {
             success: false,
-            message: error?.message || "Registration failed. Please try again.",
+            message: errorMessage,
           };
         }
       },
