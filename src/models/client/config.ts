@@ -1,11 +1,14 @@
-import env from "@/src/env";
+// Client-side Appwrite configuration - ONLY uses NEXT_PUBLIC_ variables
+// These variables are safe to expose to the browser
+// CRITICAL: Do NOT import env.ts here - it contains server-only secrets!
 import { Client, Account, Avatars, Storage, Databases } from "appwrite";
 
 export const client = new Client();
 
+// Use process.env directly - Next.js will replace these at build time
 client
-  .setEndpoint(env.appwrite.api_endpoint)
-  .setProject(env.appwrite.project_id); // Replace with your project ID
+  .setEndpoint(process.env.NEXT_PUBLIC_API_ENDPOINT!)
+  .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
 
 export const account = new Account(client);
 export const database = new Databases(client);
