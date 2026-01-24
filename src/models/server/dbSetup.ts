@@ -7,11 +7,13 @@
 import { ss_database, ss_storage } from "./config";
 import {
   db,
+  userCollection,
   questionsCollection,
   answersCollection,
   commentsCollection,
   votesCollection,
 } from "../name";
+import createUsersCollection from "./users.collection";
 import createQuestionsCollection from "./questions.collections";
 import createAnswersCollection from "./answers.collections";
 import createCommentsCollection from "./comments.collections";
@@ -55,12 +57,15 @@ export async function setupDatabase() {
     await createDatabase();
 
     // Step 2: Create collections in dependency order
-    // Questions is independent, so create it first
-    await ensureCollection(
-      questionsCollection,
-      "questions",
-      createQuestionsCollection,
-    );
+    // Users and Questions are independent, so create them first in parallel
+    await Promise.all([
+      ensureCollection(userCollection, "users", createUsersCollection),
+      ensureCollection(
+        questionsCollection,
+        "questions",
+        createQuestionsCollection,
+      ),
+    ]);
 
     // Answers, Comments, and Votes depend on Questions but not on each other
     // Run them in parallel for better performance
@@ -80,7 +85,7 @@ export async function setupDatabase() {
     console.log("\n✅ Database setup completed successfully!");
     console.log("Summary:");
     console.log("   - Database: answer-hub-db");
-    console.log("   - Collections: questions, answers, comments, votes");
+    console.log("   - Collections: users, questions, answers, comments, votes");
     console.log("   - Storage bucket: avatars");
   } catch (error) {
     console.error("\n❌ Database setup failed:", error);

@@ -1,12 +1,14 @@
 // Auth store for managing user authentication state and operations
 // Uses Zustand for state management with Appwrite client for authentication
 // Provides login, logout, register, and session hydration functionality
+// Creates user profile documents in database during registration
 
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { persist } from "zustand/middleware";
 import { Models } from "appwrite";
-import { account } from "@/src/models/client/config";
+import { account, database, ID } from "@/src/models/client/config";
+import { db, userCollection } from "@/src/models/name";
 
 // Auth response type for login, register, and logout methods
 interface IAuthResponse {
@@ -61,7 +63,7 @@ export const useAuthStore = create<IAuthStore>()(
           state.isLoading = isLoading;
         }),
 
-      // Login action
+      // Login action - authenticates user and ensures profile exists
       login: async (email, password) => {
         set((state) => {
           state.isLoading = true;
@@ -73,6 +75,36 @@ export const useAuthStore = create<IAuthStore>()(
             password,
           );
           const user = await account.get();
+
+          // Ensure user profile exists (create if missing - safety fallback)
+          try {
+            const { documents } = await database.listDocuments(
+              db,
+              userCollection,
+              [`userId=${user.$id}`],
+            );
+
+            // If no profile exists, create one
+            if (documents.length === 0) {
+              await database.createDocument(
+                db,
+                userCollection,
+                ID.unique(),
+                {
+                  userId: user.$id,
+                  reputation: 0,
+                  bio: "",
+                  avatarId: null,
+                  questionsAsked: 0,
+                  answersGiven: 0,
+                },
+              );
+              console.log("User profile created on login (fallback)");
+            }
+          } catch (profileError) {
+            console.error("Profile check/creation failed:", profileError);
+            // Continue login even if profile check fails
+          }
 
           set((state) => {
             state.session = session;
@@ -96,22 +128,66 @@ export const useAuthStore = create<IAuthStore>()(
         }
       },
 
-      // Register action
+      // Register action - creates Auth user and user profile document
       register: async (email, password, name) => {
         set((state) => {
           state.isLoading = true;
         });
 
-        try {
-          await account.create("unique()", email, password, name);
-          set((state) => {
-            state.isLoading = false;
-          });
+        let authUserId: string | null = null;
 
-          return {
-            success: true,
-            message: "Registration successful. Please login to continue.",
-          };
+        try {
+          // Step 1: Create Appwrite Auth user
+          const authUser = await account.create(
+            ID.unique(),
+            email,
+            password,
+            name,
+          );
+          authUserId = authUser.$id;
+
+          // Step 2: Create user profile document in database
+          try {
+            await database.createDocument(
+              db,
+              userCollection,
+              ID.unique(),
+              {
+                userId: authUserId, // Link to Auth user
+                reputation: 0,
+                bio: "",
+                avatarId: null,
+                questionsAsked: 0,
+                answersGiven: 0,
+              },
+            );
+
+            set((state) => {
+              state.isLoading = false;
+            });
+
+            return {
+              success: true,
+              message: "Registration successful. Please login to continue.",
+            };
+          } catch (profileError: any) {
+            // Rollback: Delete Auth user if profile creation fails
+            console.error("Profile creation failed:", profileError);
+
+            // Delete the Auth user we just created
+            // Note: Can't delete via client SDK without session
+            // This is a limitation - consider using server-side cleanup
+
+            set((state) => {
+              state.isLoading = false;
+            });
+
+            return {
+              success: false,
+              message:
+                "Failed to create user profile. Please contact support.",
+            };
+          }
         } catch (error: any) {
           set((state) => {
             state.isLoading = false;

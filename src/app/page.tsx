@@ -7,13 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  MessageSquare,
-  Users,
-  Trophy,
-  Search,
-  ArrowRight,
-} from "lucide-react";
+import { MessageSquare, Users, Trophy, Search, ArrowRight } from "lucide-react";
 
 export default function Home() {
   // Mock data for featured questions (will be replaced with real data later)
@@ -90,7 +84,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="border-b bg-gradient-to-br from-background to-muted py-20">
+      <section className="border-b bg-linear-to-br from-background to-muted py-20">
         <div className="container mx-auto px-4 text-center">
           <h1 className="mb-6 text-5xl font-bold tracking-tight">
             Every developer has a tab open to{" "}
@@ -193,7 +187,10 @@ export default function Home() {
 
           <div className="space-y-4">
             {featuredQuestions.map((question) => (
-              <Card key={question.id} className="transition-shadow hover:shadow-md">
+              <Card
+                key={question.id}
+                className="transition-shadow hover:shadow-md"
+              >
                 <CardContent className="p-6">
                   <div className="flex gap-6">
                     {/* Stats */}
