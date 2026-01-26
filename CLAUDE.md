@@ -8,7 +8,9 @@ Answer Hub is a Q&A platform built with Next.js 16 and Appwrite as the backend-a
 
 ## General Guidelines
 
-On every file, add a 2-3 line explainer/usage guidelines in the form of comments at the top.
+- Add 2-3 line explainer/usage guidelines in comments at the top of every file
+- Never import server config files (`src/models/server/*`) in client components - this exposes the API key
+- Use the appropriate Appwrite client: server-side client for Server Components/API Routes, client-side for Client Components
 
 ## Common Commands
 
@@ -22,6 +24,9 @@ npm start            # Start production server
 
 # Code Quality
 npm run lint         # Run ESLint
+
+# Database Setup
+npx tsx src/models/server/dbSetup.ts  # Initialize/reset database structure
 ```
 
 ## Architecture
@@ -50,7 +55,10 @@ Environment variables are centralized in `src/env.ts`. Create a `.env.local` fil
 - `NEXT_PUBLIC_APPWRITE_PROJECT_ID` - Appwrite project ID
 - `APPWRITE_API_KEY` - Appwrite API key (server-side only, never expose to client)
 
-**CRITICAL**: The server config (`src/models/server/config.ts`) loads `.env.local` using `dotenv` for standalone scripts. Never import `env.ts` or server config files in client components.
+**CRITICAL**:
+- The server config (`src/models/server/config.ts`) loads `.env.local` using `dotenv` for standalone scripts
+- **NEVER** import `src/models/server/config.ts` or `src/env.ts` in client components - this will expose `APPWRITE_API_KEY` to the browser
+- Client components must use `src/models/client/config.ts` which does not contain the API key
 
 ### Data Models
 
@@ -77,6 +85,7 @@ npx tsx src/models/server/dbSetup.ts
 ```
 
 This orchestrates:
+
 - Database creation
 - All collection creation with proper indexes
 - Storage bucket setup (avatars)
@@ -97,21 +106,22 @@ The application uses Zustand for state management with persistence:
 
 - **Auth Store** (`src/stores/auth.store.ts`): Manages user authentication state
   - Uses Zustand with `immer` middleware for immutable updates
-  - Persists user/session to localStorage
-  - Registration flow: Creates Auth user → Auto-login → Creates user profile document in database
+  - Uses `persist` middleware to save user/session to localStorage (key: `auth-storage`)
+  - Registration flow: Creates Auth user → Auto-login → Creates user profile document in database → Rollback on profile creation failure
   - Login flow: Authenticates → Verifies profile exists (creates if missing as fallback)
+  - Key methods: `login()`, `register()`, `logout()`, `hydrateAuth()`, `verifySession()`
   - Exports: `useAuthStore` hook and `IAuthResponse` type
 
 ### App Structure
 
 - **App Router**: Uses Next.js 16 App Router with route groups
-  - `(auth)/` - Auth-related pages (login, register) with dedicated layout
-  - Root pages at `src/app/`
-- **UI Components**: Located in `src/components/ui/` (Radix UI primitives with Tailwind)
+  - `src/app/(auth)/` - Auth route group with login and register pages, has dedicated layout
+  - `src/app/page.tsx` - Home page (public, skips proxy validation for performance)
+  - Route groups use `(auth)` convention to organize related routes without affecting URL structure
 
-### Middleware
+### Proxy (formerly Middleware)
 
-Route protection is handled by `src/middleware.ts`:
+Route protection is handled by `src/proxy.ts`:
 
 - **Session validation**: Validates sessions by calling Appwrite's `/account` endpoint directly
 - **Security**: Prevents cookie tampering by verifying with Appwrite server (not just checking cookie presence)
@@ -121,7 +131,8 @@ Route protection is handled by `src/middleware.ts`:
 - **Direct API calls**: Uses `fetch` to call Appwrite directly (no intermediate API route needed)
 
 **Authentication Flow:**
-1. User requests protected route → Middleware calls Appwrite `/account` with cookies
+
+1. User requests protected route → Proxy calls Appwrite `/account` with cookies
 2. Appwrite validates session (checks database, expiration, tampering)
 3. Valid session → Allow access | Invalid session → Redirect to `/login?redirect=/original-path`
 
@@ -129,8 +140,35 @@ Route protection is handled by `src/middleware.ts`:
 
 - **Framework**: Next.js 16 with App Router
 - **Styling**: Tailwind CSS v4
-- **TypeScript**: Strict mode enabled, JSX transform set to `react-jsx`
-- **Backend**: Appwrite (collections for users, questions, answers, comments, votes)
+- **TypeScript**: Strict mode enabled, JSX transform set to `react-jsx`, target `ES2017`
+- **Backend**: Appwrite (collections for users, questions, answers, comments, votes + avatars storage bucket)
 - **React**: Version 19.2.3
 - **State Management**: Zustand with immer and persist middleware
 - **UI Library**: Radix UI + Tailwind + lucide-react icons
+
+## Important Patterns
+
+### Client vs Server Component Guidelines
+
+**Use Server Components (default) when:**
+- Fetching data from Appwrite database
+- Accessing environment variables server-side
+- Using the server-side Appwrite client (`src/models/server/config.ts`)
+
+**Use Client Components (`"use client"`) when:**
+- Using React hooks (useState, useEffect, etc.)
+- Using Zustand stores (e.g., `useAuthStore`)
+- Handling browser events (onClick, onChange, etc.)
+- Using the client-side Appwrite client (`src/models/client/config.ts`)
+
+### Database Document Structure
+
+Collections follow these patterns:
+
+- **user-collection**: Links to Auth user via `userId` field, stores reputation, bio, avatar, stats
+- **questions-collection**: Stores questions with authorId reference, title, content, tags
+- **answers-collection**: References questionId and authorId
+- **comments-collection**: Can reference questions or answers
+- **votes-collection**: Tracks upvotes/downvotes with userId reference
+
+All collection setup files in `src/models/server/` export a default async function that creates the collection with proper schema and indexes.

@@ -6,7 +6,7 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { persist } from "zustand/middleware";
-import { Models } from "appwrite";
+import { Models, Query } from "appwrite";
 import { account, database, ID } from "@/src/models/client/config";
 import { db, userCollection } from "@/src/models/name";
 
@@ -81,7 +81,7 @@ export const useAuthStore = create<IAuthStore>()(
             const { documents } = await database.listDocuments(
               db,
               userCollection,
-              [`userId=${user.$id}`],
+              [Query.equal("userId", user.$id)],
             );
 
             // If no profile exists, create one
@@ -109,6 +109,7 @@ export const useAuthStore = create<IAuthStore>()(
           set((state) => {
             state.session = session;
             state.user = user;
+            state.isHydrated = true; // Mark as hydrated after successful login
             state.isLoading = false;
           });
 
@@ -169,6 +170,7 @@ export const useAuthStore = create<IAuthStore>()(
             set((state) => {
               state.user = authUser;
               state.session = session;
+              state.isHydrated = true; // Mark as hydrated after successful registration
               state.isLoading = false;
             });
 
@@ -189,6 +191,7 @@ export const useAuthStore = create<IAuthStore>()(
             set((state) => {
               state.user = null;
               state.session = null;
+              state.isHydrated = false; // Invalidate after rollback
               state.isLoading = false;
             });
 
@@ -230,6 +233,7 @@ export const useAuthStore = create<IAuthStore>()(
           set((state) => {
             state.user = null;
             state.session = null;
+            state.isHydrated = false; // Invalidate cache - force fresh check on next load
             state.isLoading = false;
           });
 
@@ -302,9 +306,10 @@ export const useAuthStore = create<IAuthStore>()(
     {
       name: "auth-storage",
       partialize: (state) => ({
-        // Only persist user and session
+        // Persist user, session, and hydration flag
         user: state.user,
         session: state.session,
+        isHydrated: state.isHydrated,
       }),
     },
   ),

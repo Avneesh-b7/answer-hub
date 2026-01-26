@@ -1,6 +1,13 @@
-// Middleware for route protection and authentication checks
+// Proxy for route protection and authentication checks
 // Validates Appwrite sessions on every request using direct API calls
 // SECURITY: Prevents cookie tampering by verifying session with Appwrite server
+//
+// IMPORTANT FOR PRODUCTION:
+// - This proxy is DISABLED in development mode (see proxy function below)
+// - For production, you MUST set up a custom domain in Appwrite Console
+// - Custom domain ensures cookies are set on your domain, not Appwrite's
+// - Example: api.yourdomain.com pointing to Appwrite
+// - See: https://appwrite.io/docs/advanced/platform/custom-domains
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -58,10 +65,19 @@ async function verifySessionWithAppwrite(
 }
 
 /**
- * Main middleware function - runs on every request
+ * Main proxy function - runs on every request
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // DEVELOPMENT MODE: Skip all auth checks
+  // In dev, Appwrite cookies are set on sfo.cloud.appwrite.io domain
+  // and won't be sent to localhost, causing middleware to fail
+  // In production, use a custom domain so cookies work properly
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[PROXY] Dev mode - allowing request to: ${pathname}`);
+    return NextResponse.next();
+  }
 
   // Define route patterns
   const isAuthPage =
@@ -97,7 +113,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configure which routes middleware should run on
+// Configure which routes proxy should run on
 export const config = {
   matcher: [
     /*

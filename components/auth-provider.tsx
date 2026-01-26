@@ -8,20 +8,21 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/src/stores/auth.store";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { hydrateAuth, isHydrated } = useAuthStore();
+  const { hydrateAuth, isHydrated, session } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Hydrate auth state on app load
     const initAuth = async () => {
-      if (!isHydrated) {
+      // Skip hydration if already hydrated or if we have a session from persist
+      if (!isHydrated && !session) {
         await hydrateAuth();
       }
       setIsLoading(false);
     };
 
     initAuth();
-  }, [hydrateAuth, isHydrated]);
+  }, [hydrateAuth, isHydrated, session]);
 
   // Optional: Show loading state while checking session
   // You can customize this or remove it for instant render
