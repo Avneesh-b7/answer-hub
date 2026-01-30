@@ -129,12 +129,23 @@ Route protection is handled by `src/proxy.ts`:
 - **Protected route guards**: Redirects unauthenticated users to login with return URL (`?redirect=`)
 - **Public routes**: Home page (`/`) skips validation for performance
 - **Direct API calls**: Uses `fetch` to call Appwrite directly (no intermediate API route needed)
+- **Development mode**: Proxy is DISABLED in development (NODE_ENV=development) because Appwrite cookies are set on cloud.appwrite.io domain and won't be sent to localhost
+- **Production requirement**: Must set up custom domain in Appwrite Console for proxy to work (e.g., api.yourdomain.com)
 
 **Authentication Flow:**
 
 1. User requests protected route → Proxy calls Appwrite `/account` with cookies
 2. Appwrite validates session (checks database, expiration, tampering)
 3. Valid session → Allow access | Invalid session → Redirect to `/login?redirect=/original-path`
+
+### AuthProvider Pattern
+
+Session hydration on app startup is handled by `components/auth-provider.tsx`:
+
+- Wraps the entire app in root layout (`src/app/layout.tsx`)
+- Calls `hydrateAuth()` on app load to restore session from localStorage
+- Shows loading spinner while checking session validity
+- Standard pattern for persisting auth state across page refreshes
 
 ## Key Technical Details
 
@@ -144,7 +155,10 @@ Route protection is handled by `src/proxy.ts`:
 - **Backend**: Appwrite (collections for users, questions, answers, comments, votes + avatars storage bucket)
 - **React**: Version 19.2.3
 - **State Management**: Zustand with immer and persist middleware
-- **UI Library**: Radix UI + Tailwind + lucide-react icons
+- **UI Components**: Radix UI primitives (Avatar, DropdownMenu, Label, Slot) styled with Tailwind
+- **Icons**: lucide-react
+- **Theming**: next-themes for dark/light mode support
+- **Notifications**: sonner for toast notifications (imported as `toast` from "sonner")
 
 ## Important Patterns
 
@@ -172,3 +186,34 @@ Collections follow these patterns:
 - **votes-collection**: Tracks upvotes/downvotes with userId reference
 
 All collection setup files in `src/models/server/` export a default async function that creates the collection with proper schema and indexes.
+
+### UI Component Patterns
+
+The project follows the shadcn/ui pattern:
+
+- **Base components** (`components/ui/`) are Radix UI primitives styled with Tailwind
+- **Composed components** (`components/`) use base components to build features (e.g., Navbar)
+- **Utility functions**: `cn()` from `lib/utils.ts` for conditional class merging (clsx + tailwind-merge)
+- **Auth-aware UI**: Navbar conditionally shows navigation links and user dropdown only when logged in
+
+### Layout Structure
+
+- **Root layout** (`src/app/layout.tsx`): Wraps app with ThemeProvider, AuthProvider, Navbar, and Toaster
+- **Auth layout** (`src/app/(auth)/layout.tsx`): Centered layout for login/register pages with gradient background
+- **Navbar behavior**: Hidden on auth pages (`/login`, `/register`), shows conditional UI based on auth state
+
+### Common Patterns
+
+**User Feedback:**
+- Use `toast` from `sonner` for success/error notifications
+- Always show feedback for async operations (login, logout, form submissions)
+- Example: `toast.success("Logged in successfully")` or `toast.error("Login failed")`
+
+**Styling:**
+- Use `cn()` utility from `lib/utils.ts` for conditional classes: `cn("base-class", condition && "conditional-class")`
+- Leverage Tailwind utility classes for responsive design (md:flex, hidden, etc.)
+
+**Auth State Access:**
+- Use `useAuthStore()` hook to access `user`, `session`, `login()`, `logout()`, etc.
+- Check `user` presence for conditional rendering: `{user && <ProtectedContent />}`
+- Auth store persists to localStorage automatically via persist middleware

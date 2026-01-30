@@ -8,9 +8,9 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { LogOut, User, MessageSquare } from "lucide-react";
+import { LogOut, User, MessageSquare, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,33 +63,44 @@ export function Navbar() {
             <span className="text-xl font-bold">Answer Hub</span>
           </Link>
 
-          {/* Navigation Links */}
-          <div className="hidden items-center gap-6 md:flex">
-            <Link
-              href="/questions"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Questions
-            </Link>
-            <Link
-              href="/tags"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Tags
-            </Link>
-            <Link
-              href="/users"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Users
-            </Link>
-          </div>
+          {/* Navigation Links - Only show when logged in */}
+          {user && (
+            <div className="hidden items-center gap-6 md:flex">
+              <Link
+                href="/myquestions"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                My Questions
+              </Link>
+              <Link
+                href="/myanswers"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                My Answers
+              </Link>
+              <Link
+                href="/all"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Search Answer-Hub
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Auth Section */}
         <div className="flex items-center gap-4">
           {user ? (
-            // Logged in: Show user dropdown
+            <>
+              {/* Ask Question Button */}
+              <Button asChild>
+                <Link href="/ask">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Ask Question
+                </Link>
+              </Button>
+
+              {/* User dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -138,6 +149,7 @@ export function Navbar() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </>
           ) : (
             // Not logged in: Show login/signup buttons
             <>
